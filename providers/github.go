@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -61,36 +62,45 @@ func (p *GitHubProvider) hasOrg(accessToken string) (bool, error) {
 		Login string `json:"login"`
 	}
 
-	params := url.Values{
-		"limit": {"100"},
+	var orgs_page []struct {
+		Login string `json:"login"`
 	}
 
-	endpoint := &url.URL{
-		Scheme:   p.ValidateURL.Scheme,
-		Host:     p.ValidateURL.Host,
-		Path:     path.Join(p.ValidateURL.Path, "/user/orgs"),
-		RawQuery: params.Encode(),
-	}
-	req, _ := http.NewRequest("GET", endpoint.String(), nil)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", accessToken))
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return false, err
-	}
+	for page_number := 1; page_number <= 2; page_number++ {
+		params := url.Values{
+			"limit": {"200"},
+			"page":  {strconv.Itoa(page_number)},
+		}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return false, err
-	}
-	if resp.StatusCode != 200 {
-		return false, fmt.Errorf(
-			"got %d from %q %s", resp.StatusCode, endpoint.String(), body)
-	}
+		endpoint := &url.URL{
+			Scheme:   p.ValidateURL.Scheme,
+			Host:     p.ValidateURL.Host,
+			Path:     path.Join(p.ValidateURL.Path, "/user/orgs"),
+			RawQuery: params.Encode(),
+		}
+		req, _ := http.NewRequest("GET", endpoint.String(), nil)
+		req.Header.Set("Accept", "application/vnd.github.v3+json")
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", accessToken))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return false, err
+		}
 
-	if err := json.Unmarshal(body, &orgs); err != nil {
-		return false, err
+		body, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return false, err
+		}
+		if resp.StatusCode != 200 {
+			return false, fmt.Errorf(
+				"got %d from %q %s", resp.StatusCode, endpoint.String(), body)
+		}
+
+		if err := json.Unmarshal(body, &orgs_page); err != nil {
+			return false, err
+		}
+
+		orgs = append(orgs, orgs_page...)
 	}
 
 	var presentOrgs []string
@@ -118,7 +128,7 @@ func (p *GitHubProvider) hasOrgAndTeam(accessToken string) (bool, error) {
 	}
 
 	params := url.Values{
-		"limit": {"100"},
+		"limit": {"200"},
 	}
 
 	endpoint := &url.URL{
