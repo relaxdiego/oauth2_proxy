@@ -62,7 +62,8 @@ func (p *GitHubProvider) hasOrg(accessToken string) (bool, error) {
 	}
 
 	params := url.Values{
-		"limit": {"100"},
+		"limit":    {"150"},
+		"per_page": {"150"},
 	}
 
 	endpoint := &url.URL{
@@ -118,7 +119,8 @@ func (p *GitHubProvider) hasOrgAndTeam(accessToken string) (bool, error) {
 	}
 
 	params := url.Values{
-		"limit": {"100"},
+		"limit":    {"150"},
+		"per_page": {"150"},
 	}
 
 	endpoint := &url.URL{
